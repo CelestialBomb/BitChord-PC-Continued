@@ -57,4 +57,3 @@ Defaults are omitted from the JSON: `beatConfidence` 0.9, `keyConfidence` 0.0, `
 - The absolute source of the expected result is planner output, not a hand calculation.
 - Legacy fixtures must keep passing with beat-aware mode off. They are the proof that existing behaviour has not changed.
 - A fixture is only added once both apps can run it, or it is marked `"androidOnly": true` until the PC port catches up.
-
