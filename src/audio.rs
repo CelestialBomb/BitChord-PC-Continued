@@ -87,6 +87,12 @@ pub struct AudioStatus {
     automix: AtomicBool,
     /// Tempo estimate of the playing song in BPM (f32 bits); 0 until one is heard.
     bpm: AtomicU32,
+    /// How far `bpm` can be trusted, 0..1 (f32 bits); 0 until a tempo is heard.
+    bpm_confidence: AtomicU32,
+    /// Beat-aware transitions (docs/transitions-design.md). Off leaves Automix as it was.
+    beat_aware: AtomicBool,
+    /// A song is fading out under the next one. Queue-changing work waits while this is set.
+    blending: AtomicBool,
     mix_generation: AtomicU64,
     mix_duration_ms: AtomicU32,
     mix_active: AtomicBool,
@@ -148,6 +154,18 @@ impl AudioStatus {
 
     pub fn mixing(&self) -> bool {
         self.mix_active.load(Ordering::Relaxed)
+    }
+
+    /// True from the moment a song starts fading out until it is silent. Anything that
+    /// would replace or reorder what is playing (a hi-res upgrade, a queue edit) waits.
+    pub fn transitioning(&self) -> bool {
+        self.blending.load(Ordering::Relaxed)
+    }
+
+    /// Whether work that swaps the playing stream should wait: only with beat-aware on,
+    /// so the setting off behaves exactly as before.
+    pub fn hold_stream_swaps(&self) -> bool {
+        self.beat_aware.load(Ordering::Relaxed) && self.transitioning()
     }
 
     pub fn latency(&self) -> Duration {
@@ -367,11 +385,13 @@ struct Tempo {
     passes: u8,
     /// How many ms one loudness reading covers.
     hop_ms: f32,
+    /// How far the last answer can be trusted, 0..1 (see `transitions::analysis`).
+    confidence: f32,
 }
 
 impl Tempo {
     fn new(hop_ms: f32) -> Self {
-        Self { prev: 0.0, hist: [0.0; 300], count: 0, done: false, passes: 0, hop_ms }
+        Self { prev: 0.0, hist: [0.0; 300], count: 0, done: false, passes: 0, hop_ms, confidence: 0.0 }
     }
 
     // Bounded: a few windows of roughly six seconds each, and it stops the moment one of
@@ -387,8 +407,9 @@ impl Tempo {
         if self.count < self.hist.len() {
             return None;
         }
-        if let Some(bpm) = self.estimate() {
+        if let Some((bpm, confidence)) = self.estimate_scored() {
             self.done = true;
+            self.confidence = confidence;
             return Some(bpm);
         }
         // An intro that says nothing yet is not a song without a beat: try the next
@@ -403,7 +424,8 @@ impl Tempo {
         None
     }
 
-    fn estimate(&self) -> Option<f32> {
+    /// The tempo and how far to trust it.
+    fn estimate_scored(&self) -> Option<(f32, f32)> {
         let n = self.hist.len();
         let mean = self.hist.iter().sum::<f32>() / n as f32;
         let power = self.hist.iter().map(|e| (e - mean).powi(2)).sum::<f32>() / n as f32;
@@ -415,11 +437,14 @@ impl Tempo {
         let lo = ((0.30 * 1000.0 / self.hop_ms) as usize).max(4);
         let hi = ((1.20 * 1000.0 / self.hop_ms) as usize).min(n / 2);
         let mut best = (0.0f32, 0usize);
+        let (mut total, mut tried) = (0.0f32, 0u32);
         for lag in lo..=hi {
             let c: f32 = (lag..n).map(|i| (self.hist[i] - mean) * (self.hist[i - lag] - mean)).sum::<f32>() / (n - lag) as f32;
             let secs = lag as f32 * self.hop_ms / 1000.0;
             let prior = (-(secs / 0.5).ln().powi(2) / (2.0 * 0.4 * 0.4)).exp();
             let score = c / power * prior;
+            total += score;
+            tried += 1;
             if score > best.0 {
                 best = (score, lag);
             }
@@ -427,6 +452,8 @@ impl Tempo {
         if best.0 < 0.08 {
             return None;
         }
+        let average = if tried > 0 { total / tried as f32 } else { 0.0 };
+        let confidence = crate::transitions::analysis::grid_confidence(best.0 as f64, average as f64) as f32;
         let mut bpm = 60_000.0 / (best.1 as f32 * self.hop_ms);
         while bpm < 70.0 {
             bpm *= 2.0;
@@ -434,7 +461,7 @@ impl Tempo {
         while bpm > 180.0 {
             bpm /= 2.0;
         }
-        Some(bpm)
+        Some((bpm, confidence))
     }
 }
 
@@ -513,6 +540,7 @@ impl<S: rodio::Source> Iterator for Meter<S> {
                     if self.tempo.done {
                         let _ = self.analysis.set(bpm);
                         self.status.bpm.store(bpm.unwrap_or(0.0).to_bits(), Ordering::Relaxed);
+                        self.status.bpm_confidence.store(if bpm.is_some() { self.tempo.confidence } else { 0.0 }.to_bits(), Ordering::Relaxed);
                         log::debug!("audio: tempo analysis complete: {bpm:?}");
                     }
                 }
@@ -587,6 +615,12 @@ impl AudioHandle {
     /// Automix's handoff shape for the crossfade (see `Ramp::MixIn`).
     pub fn set_automix(&self, on: bool) {
         self.status.automix.store(on, Ordering::Relaxed);
+    }
+
+    /// Beat-aware transitions: with it on, a tempo the meter does not trust leaves
+    /// Automix on its plain crossfade. Off is exactly the previous behaviour.
+    pub fn set_beat_aware(&self, on: bool) {
+        self.status.beat_aware.store(on, Ordering::Relaxed);
     }
 
     pub fn set_volume(&self, v: f32) {
@@ -683,6 +717,8 @@ const AUTOMIX_BARS_LONG: f32 = 16.0;
 const AUTOMIX_MAX_BARS: f32 = 32.0;
 const AUTOMIX_MAX_MS: u32 = 45_000;
 const AUTOMIX_MIN_MS: u32 = 4_000;
+/// With beat-aware on, a mix lives inside the last 30 s of the song, as on Android.
+const BEAT_AWARE_MIX_WINDOW_MS: u32 = 30_000;
 
 /// How long the mix runs, in ms. Automix works it out from the bars and the tempo it
 /// hears in the outgoing song; a plain crossfade uses its setting.
@@ -696,9 +732,22 @@ fn mix_ms(status: &AudioStatus, length: Option<Duration>) -> u32 {
         // Nothing to count bars with yet: the crossfade length stands in.
         return crossfade;
     }
+    let beat_aware = status.beat_aware.load(Ordering::Relaxed);
+    if beat_aware {
+        // A tempo outside the shared 40-220 BPM range, or one the meter does not trust
+        // (below the 0.2 floor), counts for nothing: the normal crossfade length stands
+        // in (design doc rules R6a and R6b).
+        use crate::transitions::policy::{MAX_BPM, MIN_BPM, MIN_DJ_CONFIDENCE};
+        let confidence = f32::from_bits(status.bpm_confidence.load(Ordering::Relaxed)) as f64;
+        if !(MIN_BPM..=MAX_BPM).contains(&(bpm as f64)) || confidence < MIN_DJ_CONFIDENCE {
+            return crossfade;
+        }
+    }
     let bars = if length.is_some_and(|d| d >= Duration::from_secs(240)) { AUTOMIX_BARS_LONG } else { AUTOMIX_BARS };
     let ms = (bars.min(AUTOMIX_MAX_BARS) * 4.0 * 60_000.0 / bpm) as u32;
-    let ms = ms.clamp(AUTOMIX_MIN_MS, AUTOMIX_MAX_MS);
+    // Beat-aware keeps the whole blend inside the last 30 s of the song (design doc 3).
+    let ceiling = if beat_aware { AUTOMIX_MAX_MS.min(BEAT_AWARE_MIX_WINDOW_MS) } else { AUTOMIX_MAX_MS };
+    let ms = ms.clamp(AUTOMIX_MIN_MS, ceiling);
     // A short song saves room for its own mix: a third of it at most.
     length.map_or(ms, |d| ms.min((d.as_millis() as u32 / 3).max(QUICK_FADE_MS)))
 }
@@ -1040,6 +1089,13 @@ fn run(
                     s.cancel();
                     continue;
                 }
+                // Beat-aware: nothing replaces the playing stream mid-blend (design doc
+                // section 4). The upgrade is optional; the song carries on at the quality it has.
+                if status.beat_aware.load(Ordering::Relaxed) && !fading.is_empty() {
+                    log::debug!("audio: hi-res upgrade dropped, a transition is running");
+                    s.cancel();
+                    continue;
+                }
                 log::debug!("audio: upgrade generation {generation} to hi-res stream at {at:?}");
                 seek_seq += 1;
                 if output.sink.is_none() || output.default_changed() {
@@ -1247,6 +1303,8 @@ fn run(
         {
             output.open(tx.clone(), &status);
         }
+        // Derived from the list itself, so it can't disagree with what is actually fading.
+        status.blending.store(!fading.is_empty(), Ordering::Relaxed);
         if !fading.is_empty() {
             if let Some(f) = fading.iter().find(|f| f.natural) {
                 status.sample_outgoing(f.offset + f.player.get_pos(), !f.player.is_paused() && !f.player.empty());
@@ -1267,6 +1325,7 @@ fn run(
                 }
             });
             if fading.is_empty() {
+                status.blending.store(false, Ordering::Relaxed);
                 status.mix_active.store(false, Ordering::Relaxed);
                 wake();
                 log::debug!("audio: crossfade done");
@@ -1579,5 +1638,68 @@ mod tests {
         assert!((audio.volume() - 0.5).abs() < 1e-6);
         audio.set_log_volume(false);
         assert!((audio.volume() - 0.125).abs() < 1e-6);
+    }
+
+    fn automix_status(bpm: f32, confidence: f32, beat_aware: bool) -> AudioStatus {
+        let status = AudioStatus::default();
+        status.automix.store(true, Ordering::Relaxed);
+        status.crossfade_ms.store(5_000, Ordering::Relaxed);
+        status.bpm.store(bpm.to_bits(), Ordering::Relaxed);
+        status.bpm_confidence.store(confidence.to_bits(), Ordering::Relaxed);
+        status.beat_aware.store(beat_aware, Ordering::Relaxed);
+        status
+    }
+
+    #[test]
+    fn beat_aware_falls_back_to_the_normal_crossfade_when_the_tempo_is_not_trusted() {
+        let song = Some(Duration::from_secs(200));
+        // 120 BPM, eight bars: 16 s, within Automix's 4-45 s range and a third of the song.
+        let trusted = automix_status(120.0, 0.9, true);
+        assert_eq!(mix_ms(&trusted, song), 16_000);
+        // The same tempo with confidence under the shared 0.2 floor is not used.
+        let doubtful = automix_status(120.0, 0.1, true);
+        assert_eq!(mix_ms(&doubtful, song), 5_000);
+    }
+
+    #[test]
+    fn beat_aware_keeps_the_blend_inside_the_last_thirty_seconds_and_the_tempo_range() {
+        let long_song = Some(Duration::from_secs(600));
+        // A 600 s song at 45 BPM gets sixteen bars, 85 s, which plain Automix caps at 45 s
+        // and beat-aware at the 30 s window.
+        let slow = automix_status(45.0, 0.9, true);
+        assert_eq!(mix_ms(&slow, long_song), 30_000);
+        let slow_off = automix_status(45.0, 0.9, false);
+        assert_eq!(mix_ms(&slow_off, long_song), 45_000);
+        // 230 BPM is inside Automix's own 40-240 range but outside the shared 40-220 one.
+        let fast = automix_status(230.0, 0.9, true);
+        assert_eq!(mix_ms(&fast, long_song), 5_000);
+        let fast_off = automix_status(230.0, 0.9, false);
+        assert_ne!(mix_ms(&fast_off, long_song), 5_000);
+    }
+
+    #[test]
+    fn with_beat_aware_off_the_confidence_is_ignored_and_automix_is_unchanged() {
+        let song = Some(Duration::from_secs(200));
+        let off = automix_status(120.0, 0.0, false);
+        assert_eq!(mix_ms(&off, song), 16_000);
+    }
+
+    #[test]
+    fn transitioning_follows_the_blending_flag() {
+        let status = AudioStatus::default();
+        assert!(!status.transitioning());
+        status.blending.store(true, Ordering::Relaxed);
+        assert!(status.transitioning());
+    }
+
+    #[test]
+    fn stream_swaps_only_wait_for_a_blend_when_beat_aware_is_on() {
+        let status = AudioStatus::default();
+        status.blending.store(true, Ordering::Relaxed);
+        assert!(!status.hold_stream_swaps(), "off must behave as before");
+        status.beat_aware.store(true, Ordering::Relaxed);
+        assert!(status.hold_stream_swaps());
+        status.blending.store(false, Ordering::Relaxed);
+        assert!(!status.hold_stream_swaps());
     }
 }

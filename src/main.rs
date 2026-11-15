@@ -32,6 +32,7 @@ mod sponsorblock;
 mod stream;
 mod theme;
 mod transfer;
+mod transitions;
 mod translate;
 mod tray;
 mod turnstile;

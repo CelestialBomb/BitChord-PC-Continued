@@ -443,6 +443,9 @@ pub struct App {
     crossfade: bool,
     /// DJ-style handoff: the next song eases in under the last one (see `audio::Ramp`).
     automix: bool,
+    /// Beat-aware transitions (docs/transitions-design.md): a tempo the app can't trust
+    /// leaves Automix on the normal crossfade. Off keeps Automix exactly as it was.
+    beat_aware: bool,
     crossfade_secs: u32,
     /// The next song starts because this one is ending: crossfade into it.
     handoff: bool,
@@ -786,6 +789,7 @@ impl App {
             sponsorblock: get("sponsorblock").is_some_and(|v| v == "1"),
             crossfade: get("crossfade").is_some_and(|v| v == "1"),
             automix: get("automix").is_some_and(|v| v == "1"),
+            beat_aware: get("beat_aware").is_some_and(|v| v == "1"),
             handoff: false,
             pending_mix: None,
             mix_from: None,
@@ -1568,6 +1572,7 @@ impl eframe::App for App {
         storage.set_string("sponsorblock", b(self.sponsorblock));
         storage.set_string("crossfade", b(self.crossfade));
         storage.set_string("automix", b(self.automix));
+        storage.set_string("beat_aware", b(self.beat_aware));
         storage.set_string("crossfade_secs", self.crossfade_secs.to_string());
         storage.set_string("show_roman", b(self.show_roman));
         storage.set_string("show_trans", b(self.show_trans));

@@ -1763,6 +1763,11 @@ impl Backend {
 
     /// Upgrade the active song if it is playing standard YouTube quality and not reverted.
     pub fn try_upgrade_active(&self, generation: u64, track: Option<Track>) {
+        // Beat-aware: the upgrade swaps the playing stream, which must not happen mid-blend.
+        if self.audio.status.hold_stream_swaps() {
+            log::debug!("hi-res upgrade skipped, a transition is running");
+            return;
+        }
         let (video_id, has_hires) = {
             let current = self.current.lock().unwrap();
             let Some((id, shared)) = current.as_ref() else { return };

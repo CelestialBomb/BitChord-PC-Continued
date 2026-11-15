@@ -1,6 +1,6 @@
 # Beat-aware transitions: design spec
 
-**Version:** 0.2, 15 Nov 2026
+**Version:** 0.3, 15 Nov 2026
 
 **Built against**
 
@@ -109,6 +109,23 @@ See `docs/transitions-fixtures/README.md`. Both apps must pass the same files. F
 
 **PC phase 2:** run the Beat This! model through ONNX (the `ort` crate) so PC gets downbeats and can do R8. The weights and code are MIT-licensed.
 
+### 7.1 What PC does today (v0.3)
+
+Honest status, so the two apps are not assumed to behave the same:
+
+| Rule | Android | PC now |
+|---|---|---|
+| Planner rules R0-R9 and their reason codes | Used for playback | **Ported and tested against all 11 shared fixtures** (`src/transitions/`), but not yet used to choose where a blend starts |
+| R6a tempo outside 40-220 BPM | Plain crossfade | **Live:** the normal crossfade length is used |
+| R6b weak beat confidence (below 0.2) | Plain crossfade | **Live:** the normal crossfade length is used |
+| 30-second mix window | Applied to the plan | **Live:** a blend never exceeds 30 s |
+| `isTransitioning()` | `CrossfadeController.isTransitioning()` | **Live:** `AudioStatus::transitioning()`; a hi-res upgrade is skipped mid-blend |
+| Phrase-aligned starts (R8), tempo matching, album gapless (R3), speech/live (R4), short tracks (R2) | Used for playback | **Not live.** Implemented in the planner and covered by fixtures, but playback still starts the blend by timing alone |
+
+Setting: **Beat-aware transitions** (Settings, under Automix, off by default). Off is exactly the previous behaviour, and there is a test for it.
+
+Confidence: PC's live tempo meter reports 0..1 with the same formula as `transitions::analysis::grid_confidence`. It is a loudness-autocorrelation heuristic, not the Beat This! model, so its values are not directly comparable with Android's.
+
 ## 8. Licensing
 
 - `TransitionPlanner`, `TransitionPolicy`, `TrackAnalysis` and `BeatTracker` on Android are ported from Orchard and are AGPL-3.0-or-later. Their headers must stay.
@@ -124,5 +141,6 @@ See `docs/transitions-fixtures/README.md`. Both apps must pass the same files. F
 
 ## 10. Changelog
 
+- 0.3: PC Rust port of the policy and planner passes the shared fixtures; PC engine uses the confidence floor, tempo range, 30 s window and `transitioning()` guard behind its Beat-aware setting. Section 7.1 lists what PC does and does not do yet.
 - 0.2: implemented the isolated Android configuration mapping, its four persisted settings and the two planner options; added recorded legacy and beat-aware fixtures. 8 bars for tracks under four minutes, 16 bars otherwise.
 - 0.1: first draft from the v1.9.1 and v2.0.1 audit.

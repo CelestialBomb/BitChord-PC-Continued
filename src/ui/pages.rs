@@ -1436,6 +1436,14 @@ fn settings_playback(app: &mut App, ui: &mut Ui) {
                 app.set_crossfade();
             }
         });
+        if app.automix {
+            divider(ui);
+            setting_row(ui, "Beat-aware transitions", Some("Only mix to the beat when the app is confident it found it. If it isn't sure of the tempo, the song fades out the normal way instead. Phrase-aligned blends and tempo matching come with a later update."), |ui| {
+                if toggle(ui, &mut app.beat_aware, "Beat-aware transitions").changed() {
+                    app.set_crossfade();
+                }
+            });
+        }
         if !app.automix {
             divider(ui);
             setting_row(ui, "Crossfade songs", Some("Blend the end of each song into the start of the next."), |ui| {
