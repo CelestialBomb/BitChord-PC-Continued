@@ -1,0 +1,44 @@
+name: Transitions
+
+# Built against BitChord PC Continued v2.0.1. Windows only, no macOS (see
+# docs/transitions-design.md). No secrets and no release publishing.
+on:
+  push:
+    branches: [transitions]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: transitions-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows tests and binary
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Clippy
+        if: ${{ !cancelled() }}
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Upload the binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: bitchord-transitions-windows-x64
+          path: target/release/bitchord.exe
