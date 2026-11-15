@@ -10,3 +10,27 @@ server/.wrangler/
 server/node_modules/
 .playwright-cli/
 target-bisect/
+
+# Secrets and signing material: never commit these. CI keeps them in GitHub secrets.
+.env
+.env.*
+*.pem
+*.pfx
+*.p12
+*.jks
+*.keystore
+keystore.properties
+local.properties
+server/.dev.vars
+
+# Local addon sources, tokens and sign-in state
+addons.json
+addon-sources*.json
+*.token
+secrets/
+
+# Built packages
+*.exe
+*.msi
+*.dmg
+*.AppImage
