@@ -1,0 +1,24 @@
+{
+    "name": "Only the incoming grid is weak",
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000,
+        "analysis": {
+            "beatConfidence": 0.1
+        }
+    },
+    "expected": {
+        "reason": "before-smart-duration",
+        "transitionStyle": "DJ_BLEND",
+        "transitionStartSeconds": 180.5,
+        "fadeSeconds": 12.0,
+        "incomingCueSeconds": 0.5,
+        "policyReasons": [
+            "beat-confidence"
+        ]
+    }
+}

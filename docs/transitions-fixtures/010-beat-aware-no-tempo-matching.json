@@ -1,0 +1,30 @@
+{
+    "name": "Beat-aware: original tempos are preserved when matching is off",
+    "settings": {
+        "beatAware": true,
+        "phraseAligned": true,
+        "tempoMatching": false,
+        "albumGapless": true
+    },
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000,
+        "analysis": {
+            "bpm": 111.0
+        }
+    },
+    "expected": {
+        "reason": "before-phrase-8-bar",
+        "transitionStyle": "DJ_FILTER",
+        "transitionStartSeconds": 180.5,
+        "fadeSeconds": 16.0,
+        "incomingCueSeconds": 0.5,
+        "policyReasons": [
+            "stretch-disabled"
+        ]
+    }
+}

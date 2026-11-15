@@ -1,0 +1,29 @@
+{
+    "name": "Beat-aware: sixteen bars for the longer track, within the mix window",
+    "settings": {
+        "beatAware": true,
+        "phraseAligned": true,
+        "albumGapless": true
+    },
+    "outgoing": {
+        "id": "a",
+        "durationMs": 300000,
+        "analysis": {
+            "duration": 300.0
+        }
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 300000,
+        "analysis": {
+            "duration": 300.0
+        }
+    },
+    "expected": {
+        "reason": "before-phrase-16-bar",
+        "transitionStyle": "DJ_BLEND",
+        "transitionStartSeconds": 270.0,
+        "fadeSeconds": 26.5,
+        "incomingCueSeconds": 0.5
+    }
+}

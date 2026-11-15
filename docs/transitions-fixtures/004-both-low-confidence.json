@@ -1,0 +1,26 @@
+{
+    "name": "Neither grid can be trusted at all",
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000,
+        "analysis": {
+            "beatConfidence": 0.1
+        }
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000,
+        "analysis": {
+            "beatConfidence": 0.1
+        }
+    },
+    "expected": {
+        "reason": "before-plain-crossfade-window",
+        "transitionStartSeconds": 190.0,
+        "fadeSeconds": 8.0,
+        "incomingCueSeconds": 0.5,
+        "policyReasons": [
+            "beat-confidence"
+        ]
+    }
+}

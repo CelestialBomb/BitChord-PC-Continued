@@ -1,0 +1,16 @@
+{
+    "name": "Live recordings are never mixed",
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000,
+        "title": "Song (Live)"
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000
+    },
+    "expected": {
+        "reason": "blocked-speech-or-live",
+        "blocked": true
+    }
+}

@@ -1,0 +1,24 @@
+{
+    "name": "Tempi too far apart for the transparent stretch window",
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000,
+        "analysis": {
+            "bpm": 170.0
+        }
+    },
+    "expected": {
+        "reason": "before-smart-duration",
+        "transitionStyle": "DJ_FILTER",
+        "transitionStartSeconds": 192.5,
+        "fadeSeconds": 4.0,
+        "incomingCueSeconds": 0.5,
+        "policyReasons": [
+            "tempo-distance"
+        ]
+    }
+}

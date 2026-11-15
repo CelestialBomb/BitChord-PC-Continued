@@ -1,6 +1,6 @@
 # Beat-aware transitions: design spec
 
-**Version:** 0.1 (draft), 15 Nov 2026
+**Version:** 0.2, 15 Nov 2026
 
 **Built against**
 
@@ -89,7 +89,14 @@ The existing Android strings are the canonical list. PC must emit the same ones.
 
 ## 6. Shared test files
 
-See `docs/transitions-fixtures/README.md`. Both apps must pass the same files. The first Android files record today's planner output, which also proves that leaving the feature off changes nothing.
+See `docs/transitions-fixtures/README.md`. Both apps must pass the same files. Fixtures 001–008 record the unmodified Android v1.9.1 planner and prove that the default mapping is a no-op. Fixtures 009–011 cover one-sided weak confidence, no tempo matching and a 16-bar mix. Android `BeatAwareConfig` maps settings to planner arguments; PC will use the same mapping when its port is implemented.
+
+### Android connection points (implemented)
+
+- `shared/commonMain/.../playback/transitions/BeatAwareConfig.kt` is the isolated settings-to-planner mapping. It imports only `PHRASE_BARS_SHORT` and `PHRASE_BARS_LONG` from the existing planner and has no Android or Media3 dependency.
+- `CrossfadeController.considerSmartTransition` is the sole planner call. It passes the config's phrase, album, mix-window and stretch options. `toTransitionInfo` also passes `MediaMetadata.albumTitle`, allowing the existing album comparison to work.
+- `AppSettings` persists four switches: `beat_aware_transitions` (off by default), and phrase alignment, tempo matching and album gapless (all on by default underneath it). `SettingsSheet` exposes them beneath Automix.
+- The existing renderer executes the resulting plan. There is no second playback engine, queue hook or analysis hook.
 
 ## 7. Allowed differences in phase 1
 
@@ -108,14 +115,14 @@ See `docs/transitions-fixtures/README.md`. Both apps must pass the same files. T
 - Any Rust port of those rules carries the same AGPL header and names the Kotlin file it follows.
 - No API keys, add-on URLs, tokens or signing keys in either repo. They belong in `.gitignore` or GitHub secrets. CI signs nothing and uses no secrets.
 
-## 9. Not yet verified
+## 9. Verification status
 
-- Whether the planner's beat-aligned paths (`planWsolaTransition`, `phraseSwitch`, `mixPlan`) can ever change tempo. `allowTempoStretch` depends on this.
-- The value of `DEFAULT_SMART_FALLBACK_SECONDS`, and the fade length Android uses for a skip mid-blend.
-- Whether any other caller passes `phraseBars` or `mixWindow`.
-- How PC's `Tempo::estimate` decides to accept a result.
-- Whether PC guards `Upgrade` during a blend, turns Automix off in jams, or carries an album ID in queue items.
+- The eight legacy fixtures passed before and after the planner change on the local JVM. All shared JVM tests passed after the change (131 tests in 20 suites).
+- Confirmed against v1.9.1 source: `CrossfadeController` is the only app-module caller of `planTransition`; no other caller supplies `phraseBars` or `mixWindow`; the default fallback is 6 s.
+- Android's no-stretch path is tested for both phrase and adaptive planning, so it cannot produce a rate other than 1.0. Octave-equivalent tempi still need no stretch.
+- Still to confirm: the exact Android skip-mid-blend fade length; how PC's `Tempo::estimate` accepts a result; whether PC guards hi-res `Upgrade` during a blend, disables Automix during jams, and carries an album ID in queue items.
 
 ## 10. Changelog
 
+- 0.2: implemented the isolated Android configuration mapping, its four persisted settings and the two planner options; added recorded legacy and beat-aware fixtures. 8 bars for tracks under four minutes, 16 bars otherwise.
 - 0.1: first draft from the v1.9.1 and v2.0.1 audit.

@@ -1,0 +1,23 @@
+{
+    "name": "A measured tempo outside 40-220 BPM cannot be used",
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000,
+        "analysis": {
+            "bpm": 250.0
+        }
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000
+    },
+    "expected": {
+        "reason": "before-plain-crossfade-window",
+        "transitionStartSeconds": 190.0,
+        "fadeSeconds": 8.0,
+        "incomingCueSeconds": 0.5,
+        "policyReasons": [
+            "outgoing-tempo"
+        ]
+    }
+}

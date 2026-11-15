@@ -1,0 +1,19 @@
+{
+    "name": "Too little track to spend on a mix",
+    "outgoing": {
+        "id": "a",
+        "durationMs": 30000,
+        "analysis": {
+            "duration": 30.0
+        }
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000
+    },
+    "expected": {
+        "reason": "short-duration-guard",
+        "blocked": true,
+        "transitionStartSeconds": 30.0
+    }
+}

@@ -1,0 +1,18 @@
+{
+    "name": "Two confident tracks at the same tempo",
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000
+    },
+    "expected": {
+        "reason": "before-smart-duration",
+        "transitionStyle": "DJ_BLEND",
+        "transitionStartSeconds": 180.5,
+        "fadeSeconds": 12.0,
+        "incomingCueSeconds": 0.5
+    }
+}
