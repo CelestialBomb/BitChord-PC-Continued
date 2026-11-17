@@ -1,6 +1,6 @@
 # Beat-aware transitions: design spec
 
-**Version:** 0.5, 17 Nov 2026
+**Version:** 0.6, 17 Nov 2026
 
 **Built against**
 
@@ -115,11 +115,18 @@ The existing Android check is: plain crossfade when BOTH tracks are below 0.2. R
    - **What is saved:** mode (mix, gapless or no mix); for mix: style, length in bars (or seconds when there is no trusted grid), `beatSeconds` (the beat length the editor measured, so the played length equals the drawn one), the start as seconds before the outgoing song's end, bass swap, an exit filter (none, low-pass, high-pass) with an amount, and the two song durations it was made for. No EQ in 0.5.
    - **Gapless** is a plain handoff (`custom-gapless`, 120 ms). **No mix** (`custom-no-mix`) arms nothing and the queue advances plainly. Neither is blocked by the failure record. A mix pair is, like any blend.
    - **Fallbacks:** `custom-fallback-duration` (either song's length differs from the saved one by more than 2 s), `custom-fallback-window` (the blend would leave the last 45 s of the outgoing song or the first 45 s of the incoming one, or pass the end of the content), `custom-fallback-late` (the playhead is already past the start). Each returns the automatic plan, so there is never a gap or a loop.
-   - **Planner decisions kept:** the tempo stretch rate and the incoming cue. A custom pair never uses the loop mix, and Mix on skip ignores it.
+   - **Planner decisions kept:** the tempo stretch rate and the incoming cue. Mix on skip ignores custom pairs. A custom Mix pair uses the loop mix only when it asks for it (4.8.1).
    - **Saving or editing a pair clears that pair's failure record**, so the new transition applies at once, Preview included.
    - **Window loader (the editor's waveforms and beat grid).** The editor needs only the last 45 s of one song and the first 45 s of the other, never whole songs. Order: saved windows (`MixWindowStore`, per song) then the playback cache, then a fetch of only the needed byte ranges into the playback cache (the container header plus the window, at most 3 MB per window), then a wait for Wi-Fi when "Wi-Fi only downloads" is on and the connection is metered. Only when the fetch fails does the editor offer to download the two songs. Android's Matroska reader cannot seek over bytes that were not read, so a fetched tail is decoded as a small standalone WebM built from the header and the tail's whole clusters (`MatroskaWindow`). That is WebM (Opus) only; other containers fall back to the download offer.
    - **Preview** plays a two-song queue of exactly the pair, stamped with the playlist as its source, from 8 s before the blend, using the unsaved draft as a one-shot override.
    - **Backup:** the in-app backup file carries an optional `customTransitions` section (Mix flags and pairs; schema stays 1). Import replaces the store when the section is present and leaves it alone when absent.
+   - **4.8.1 Custom loop mix (0.6).** A Mix pair may ask for the loop mix (the automatic DJ transition that loops an instrumental stretch of each song and moves the tempo from one to the other). It saves `loop`, `loopBars` (1, 2 or 4: the loop on both songs) and `loopRamp`; style, length, bass swap and filter then do not apply. The frame marks about where the outgoing loop starts (`startBeforeEndSeconds`).
+     - **Planned at play time, by the controller,** because choosing a loop that is truly instrumental needs the vocal mask and the lyrics: the instrumental loop of the chosen length nearest the saved start (within 2 bars either side) on the outgoing song, and the earliest one in the incoming song's opening. The same safety rules as the automatic loop mix apply (video rows, playback speed, sleep timer, skip silence, outputs that cannot take it, analysed off another recording, waiting on analysis or lyrics).
+     - **Tempo:** ramp on is the automatic behaviour (at most 2.5 BPM per bar). Ramp off holds the outgoing tempo until the incoming loop lets go, then steps to its own; it is only allowed when the two songs are within 8 BPM (after folding to double or half time), otherwise the ramp stays on and the editor says so.
+     - **The handover must land inside the outgoing song's own file (0.6, also for the automatic loop mix).** The outgoing player keeps reading its file under the renderer until the handover, and its sink runs about 3.7 s ahead of what is heard; when the file ends first the sink is flushed and the mix dies. The planner therefore requires `loopStart + handoffAt <= duration - 6 s`, taking an earlier loop when needed and refusing the mix when none fits.
+     - **Fallback `custom-fallback-loop`:** no loop of that length near the start, none that hands over inside the song, an output that cannot take it, or no analysis. The pair then takes the whole automatic plan, loop mix included. While analysis or lyrics are still on their way and the start is more than 12 s off, the pair waits instead of arming a blend. A failed loop mix goes in the failure record like any blend.
+     - **Needs the whole-track analysis** of both songs (vocal mask and levels), which comes from playing a song through or downloading it. Analyse playlist only gets tempo and key from a song's opening, so it does not enable it; the editor then says to play both songs through once.
+     - **Preview** of a loop mix starts 25 s before the start (the decks take about 1.5 s to build and the lyrics a few seconds to arrive).
    - **Limits:** pairs are keyed by song id, so a song swapped to another version (for example Prefer music-only) gets the automatic plan. With the app's shuffle on, saved pairs apply only when the two songs really are adjacent. Local playlists themselves are not in the in-app backup (existing gap). English strings only. Android: New. PC: not done.
 
 ## 5. Reason codes
@@ -132,6 +139,7 @@ The existing Android strings are the canonical list. PC must emit the same ones.
 - New in 0.4, policy reasons added by style and length: `style-fade`, `style-rise`, `style-quick`, `length-short`, `length-long`.
 - New in 0.4, skip codes: `skip-blend`, `skip-fade`, `skip-cut-off`, `skip-cut-guard`, `skip-cut-busy`, `skip-cut-rapid`.
 - New in 0.5, custom transitions (4.8): `custom` (shown as `before-custom` before the window opens), `custom-gapless`, `custom-no-mix`, `custom-fallback-duration`, `custom-fallback-window`, `custom-fallback-late`.
+- New in 0.6: `custom-loop` (the pair asks for the loop mix; the controller plans it) and `custom-fallback-loop`.
 
 ## 6. Shared test files
 
@@ -190,6 +198,8 @@ Confidence: PC's live tempo meter reports 0..1 with the same formula as `transit
 - Still to confirm: how PC's `Tempo::estimate` accepts a result; whether PC guards hi-res `Upgrade` during a blend, disables Automix during jams, and carries an album ID in queue items.
 
 ## 10. Changelog
+
+- 0.6: Android only so far (PC to do). 4.8.1 custom loop mix (loop on/off, 1/2/4-bar loops, tempo ramp on/off), and the loop mix's handover must land inside the outgoing file (fixes the flush near a song's end). Codes `custom-loop`, `custom-fallback-loop`.
 
 - 0.5: Android only so far (PC to do). New 4.8 custom transitions per playlist (editor, Preview, window loader, backup), their reason codes and fixtures 019-023 (`androidOnly`).
 
