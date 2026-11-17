@@ -1,0 +1,26 @@
+{
+    "name": "Custom: this pair is saved as gapless",
+    "settings": {
+        "beatAware": true,
+        "phraseAligned": true,
+        "albumGapless": true
+    },
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000
+    },
+    "expected": {
+        "reason": "before-custom-gapless",
+        "transitionStyle": "GAPLESS",
+        "transitionStartSeconds": 199.55,
+        "fadeSeconds": 0.12
+    },
+    "custom": {
+        "mode": "gapless"
+    },
+    "androidOnly": true
+}

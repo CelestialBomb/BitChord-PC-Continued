@@ -1,6 +1,6 @@
 # Beat-aware transitions: design spec
 
-**Version:** 0.4, 16 Nov 2026
+**Version:** 0.5, 17 Nov 2026
 
 **Built against**
 
@@ -110,6 +110,18 @@ The existing Android check is: plain crossfade when BOTH tracks are below 0.2. R
 
    Android: New (`decideSkip`, `CrossfadeController.onNextRequested`). PC: New, to do.
 
+8. **Custom transitions (0.5).** A playlist with "Mix" on lets the listener hand-tune the transition between two songs. It runs after R0-R2 and the failure gate (4.6) and before R3-R9, and it never overrides a guard.
+   - **When it applies:** both songs are context rows (not Play next) with the same playback source, that source is a playlist with Mix on, Automix is on, and a pair is saved for them (keyed `<playlist>|<outgoing id>-><incoming id>`; the `VL` prefix of a YouTube Music browse id is ignored). Any other pairing, including the same two songs reached from another playlist or by Play next, gets the automatic plan. Listen Together, bit-perfect output, casting and video rows stay as before, so custom never applies there.
+   - **What is saved:** mode (mix, gapless or no mix); for mix: style, length in bars (or seconds when there is no trusted grid), `beatSeconds` (the beat length the editor measured, so the played length equals the drawn one), the start as seconds before the outgoing song's end, bass swap, an exit filter (none, low-pass, high-pass) with an amount, and the two song durations it was made for. No EQ in 0.5.
+   - **Gapless** is a plain handoff (`custom-gapless`, 120 ms). **No mix** (`custom-no-mix`) arms nothing and the queue advances plainly. Neither is blocked by the failure record. A mix pair is, like any blend.
+   - **Fallbacks:** `custom-fallback-duration` (either song's length differs from the saved one by more than 2 s), `custom-fallback-window` (the blend would leave the last 45 s of the outgoing song or the first 45 s of the incoming one, or pass the end of the content), `custom-fallback-late` (the playhead is already past the start). Each returns the automatic plan, so there is never a gap or a loop.
+   - **Planner decisions kept:** the tempo stretch rate and the incoming cue. A custom pair never uses the loop mix, and Mix on skip ignores it.
+   - **Saving or editing a pair clears that pair's failure record**, so the new transition applies at once, Preview included.
+   - **Window loader (the editor's waveforms and beat grid).** The editor needs only the last 45 s of one song and the first 45 s of the other, never whole songs. Order: saved windows (`MixWindowStore`, per song) then the playback cache, then a fetch of only the needed byte ranges into the playback cache (the container header plus the window, at most 3 MB per window), then a wait for Wi-Fi when "Wi-Fi only downloads" is on and the connection is metered. Only when the fetch fails does the editor offer to download the two songs. Android's Matroska reader cannot seek over bytes that were not read, so a fetched tail is decoded as a small standalone WebM built from the header and the tail's whole clusters (`MatroskaWindow`). That is WebM (Opus) only; other containers fall back to the download offer.
+   - **Preview** plays a two-song queue of exactly the pair, stamped with the playlist as its source, from 8 s before the blend, using the unsaved draft as a one-shot override.
+   - **Backup:** the in-app backup file carries an optional `customTransitions` section (Mix flags and pairs; schema stays 1). Import replaces the store when the section is present and leaves it alone when absent.
+   - **Limits:** pairs are keyed by song id, so a song swapped to another version (for example Prefer music-only) gets the automatic plan. With the app's shuffle on, saved pairs apply only when the two songs really are adjacent. Local playlists themselves are not in the in-app backup (existing gap). English strings only. Android: New. PC: not done.
+
 ## 5. Reason codes
 
 The existing Android strings are the canonical list. PC must emit the same ones.
@@ -119,10 +131,11 @@ The existing Android strings are the canonical list. PC must emit the same ones.
 - New: `stretch-disabled`, `no-stretcher`.
 - New in 0.4, policy reasons added by style and length: `style-fade`, `style-rise`, `style-quick`, `length-short`, `length-long`.
 - New in 0.4, skip codes: `skip-blend`, `skip-fade`, `skip-cut-off`, `skip-cut-guard`, `skip-cut-busy`, `skip-cut-rapid`.
+- New in 0.5, custom transitions (4.8): `custom` (shown as `before-custom` before the window opens), `custom-gapless`, `custom-no-mix`, `custom-fallback-duration`, `custom-fallback-window`, `custom-fallback-late`.
 
 ## 6. Shared test files
 
-See `docs/transitions-fixtures/README.md`. Both apps must pass the same files. Fixtures 001–008 record the unmodified Android v1.9.1 planner and prove that the default mapping is a no-op. Fixtures 009–011 cover one-sided weak confidence, no tempo matching and a 16-bar mix. Fixtures 012–013 cover the album match and 014–018 the style and length (`androidOnly` until the PC port catches up). Two optional fixture settings were added in 0.4, `mixStyle` and `blendLength`. Android `BeatAwareConfig` maps settings to planner arguments; PC will use the same mapping when its port is implemented. Mix on skip is covered by unit tests (`SkipBlendTest`), not fixtures.
+See `docs/transitions-fixtures/README.md`. Both apps must pass the same files. Fixtures 001–008 record the unmodified Android v1.9.1 planner and prove that the default mapping is a no-op. Fixtures 009–011 cover one-sided weak confidence, no tempo matching and a 16-bar mix. Fixtures 012–013 cover the album match and 014–018 the style and length (`androidOnly` until the PC port catches up). Two optional fixture settings were added in 0.4, `mixStyle` and `blendLength`. Android `BeatAwareConfig` maps settings to planner arguments; PC will use the same mapping when its port is implemented. Mix on skip is covered by unit tests (`SkipBlendTest`), not fixtures. Fixtures 019-023 (0.5, `androidOnly`) cover custom transitions through an optional `custom` block (mode, style, bars or seconds, `beatSeconds`, start before the end, filter, the durations it was made for).
 
 ### Android connection points (implemented)
 
@@ -173,9 +186,12 @@ Confidence: PC's live tempo meter reports 0..1 with the same formula as `transit
 - Android's no-stretch path is tested for both phrase and adaptive planning, so it cannot produce a rate other than 1.0. Octave-equivalent tempi still need no stretch.
 - Android skip-mid-blend fade: 120 ms (`BAIL_MS`), confirmed in 0.4.
 - 0.4 on device (Android): the failure record stops the end-of-song loop; Play next is mixed; album gapless and Mix on skip await a device test.
+- 0.5 on device (Android, over adb): the custom editor lays out and saves; Rise + High-pass, Gapless and No mix play as `custom`, `custom-gapless` (no gap, next song at 0 ms) and `custom-no-mix`; a saved pair plays as `custom` in normal playback; fetched head and tail windows decode (tail via the WebM stitch). Not checkable from logs: the volume and filter ramps, which need listening.
 - Still to confirm: how PC's `Tempo::estimate` accepts a result; whether PC guards hi-res `Upgrade` during a blend, disables Automix during jams, and carries an album ID in queue items.
 
 ## 10. Changelog
+
+- 0.5: Android only so far (PC to do). New 4.8 custom transitions per playlist (editor, Preview, window loader, backup), their reason codes and fixtures 019-023 (`androidOnly`).
 
 - 0.4: Android only so far (PC to do).
   - New settings: Mix style, Blend length and Mix on skip (section 2, 4.7).

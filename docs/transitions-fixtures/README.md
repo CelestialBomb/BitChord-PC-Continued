@@ -8,7 +8,7 @@ The first eight fixtures record the existing Android v1.9.1 planner's real outpu
 TRANSITIONS_RECORD=1 ./gradlew :shared:jvmTest
 ```
 
-`shared/src/jvmTest/.../TransitionFixturesTest.kt` writes the files. `TRANSITIONS_FIXTURES_DIR` overrides their directory. Recording is never enabled in CI. The runner lives in `shared/src/jvmTest/kotlin/com/music/bitchord/playback/smart/` of the Android fork.
+`shared/src/jvmTest/.../TransitionFixturesTest.kt` writes the files. `TRANSITIONS_FIXTURES_DIR` overrides their directory. Recording is never enabled in CI.
 
 ## Format
 
@@ -48,6 +48,8 @@ One JSON file per case, `NNN-short-name.json`:
 ```
 
 Defaults are omitted from the JSON: `beatConfidence` 0.9, `keyConfidence` 0.0, `firstBeat` 0.5, `status` `"ready"`, `vocal` 0.0, and `contentEndTime` = `duration - 2`. `transitionStyle` defaults to `EQUAL_POWER`, playback rates to 1.0, arrays to empty and `blocked` to false. Two optional settings were added in spec 0.4: `mixStyle` (`smooth`, `fade`, `rise`, `quick`; default `smooth`) and `blendLength` (`short`, `medium`, `long`; default `medium`). They are applied to the planner's answer by `applyMixStyle` (spec section 2). Fixtures that use them are marked `androidOnly` until the PC port has it.
+
+Spec 0.5 adds an optional `custom` block (fixtures 019-023, all `androidOnly`): `mode` (`mix`, `gapless`, `no-mix`), `style`, `bars` or `seconds`, `beatSeconds`, `startBeforeEndSeconds`, `bassSwap`, `filter`, `filterAmount`, and the `outDurationMs` / `inDurationMs` it was made for. It is applied after the planner's answer by `applyCustomTransition` (spec section 4.8).
 
 `analysis` is expanded to the same steady synthetic grid as `PhraseBarAutomixTest`: one downbeat every four beats, phrase boundaries every eighth downbeat, the fifth downbeat as the mix-in point, and unit energy samples every half second. BPM can be zero for a no-analysis case. Times may differ by up to 50 ms; the plan and tier reasons must match exactly.
 

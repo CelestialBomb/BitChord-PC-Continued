@@ -1,0 +1,31 @@
+{
+    "name": "Custom: a saved mix made for a 190 s version falls back to the automatic plan on a 200 s one",
+    "settings": {
+        "beatAware": true,
+        "phraseAligned": true,
+        "albumGapless": true
+    },
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000
+    },
+    "expected": {
+        "reason": "before-phrase-8-bar",
+        "transitionStyle": "DJ_BLEND",
+        "transitionStartSeconds": 180.5,
+        "fadeSeconds": 16.0,
+        "incomingCueSeconds": 0.5,
+        "policyReasons": [
+            "custom-fallback-duration"
+        ]
+    },
+    "custom": {
+        "style": "rise",
+        "outDurationMs": 190000
+    },
+    "androidOnly": true
+}

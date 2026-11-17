@@ -1,0 +1,25 @@
+{
+    "name": "Custom: this pair is saved as no mix",
+    "settings": {
+        "beatAware": true,
+        "phraseAligned": true,
+        "albumGapless": true
+    },
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000
+    },
+    "expected": {
+        "reason": "custom-no-mix",
+        "blocked": true,
+        "transitionStartSeconds": 200.0
+    },
+    "custom": {
+        "mode": "no-mix"
+    },
+    "androidOnly": true
+}

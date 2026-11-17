@@ -1,0 +1,33 @@
+{
+    "name": "Custom: a saved Quick mix with bass swap, 4 bars from 30 s before the end",
+    "settings": {
+        "beatAware": true,
+        "phraseAligned": true,
+        "albumGapless": true
+    },
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000
+    },
+    "expected": {
+        "reason": "before-custom",
+        "transitionStyle": "DJ_BLEND",
+        "transitionStartSeconds": 170.0,
+        "fadeSeconds": 8.0,
+        "incomingCueSeconds": 0.5,
+        "policyReasons": [
+            "custom"
+        ]
+    },
+    "custom": {
+        "style": "quick",
+        "bars": 4,
+        "startBeforeEndSeconds": 30.0,
+        "bassSwap": true
+    },
+    "androidOnly": true
+}

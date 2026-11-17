@@ -1,0 +1,35 @@
+{
+    "name": "Custom: a saved Rise mix, 8 bars from 20 s before the end, with a high-pass exit",
+    "settings": {
+        "beatAware": true,
+        "phraseAligned": true,
+        "albumGapless": true
+    },
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000
+    },
+    "expected": {
+        "reason": "before-custom",
+        "transitionStyle": "DJ_FILTER",
+        "transitionStartSeconds": 180.0,
+        "fadeSeconds": 16.0,
+        "incomingCueSeconds": 0.5,
+        "policyReasons": [
+            "custom"
+        ],
+        "exitFilter": "HIGH_PASS",
+        "exitFilterAmount": 0.6
+    },
+    "custom": {
+        "style": "rise",
+        "startBeforeEndSeconds": 20.0,
+        "filter": "high-pass",
+        "filterAmount": 0.6
+    },
+    "androidOnly": true
+}
