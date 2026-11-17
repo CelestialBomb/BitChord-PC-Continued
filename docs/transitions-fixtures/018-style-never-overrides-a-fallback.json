@@ -1,0 +1,31 @@
+{
+    "name": "Style Rise and length Short leave a weak-grid plain crossfade alone",
+    "settings": {
+        "beatAware": true,
+        "phraseAligned": true,
+        "albumGapless": true,
+        "mixStyle": "rise",
+        "blendLength": "short"
+    },
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000,
+        "analysis": {
+            "beatConfidence": 0.1
+        }
+    },
+    "expected": {
+        "reason": "before-plain-crossfade-window",
+        "transitionStartSeconds": 190.0,
+        "fadeSeconds": 8.0,
+        "incomingCueSeconds": 0.5,
+        "policyReasons": [
+            "beat-confidence"
+        ]
+    },
+    "androidOnly": true
+}

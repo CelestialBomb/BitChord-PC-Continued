@@ -1,0 +1,34 @@
+{
+    "name": "Style Quick: a sixteen-bar blend is cut to eight bars, ending where it did",
+    "settings": {
+        "beatAware": true,
+        "phraseAligned": true,
+        "albumGapless": true,
+        "mixStyle": "quick"
+    },
+    "outgoing": {
+        "id": "a",
+        "durationMs": 300000,
+        "analysis": {
+            "duration": 300.0
+        }
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 300000,
+        "analysis": {
+            "duration": 300.0
+        }
+    },
+    "expected": {
+        "reason": "before-phrase-16-bar",
+        "transitionStyle": "DJ_BLEND",
+        "transitionStartSeconds": 280.5,
+        "fadeSeconds": 16.0,
+        "incomingCueSeconds": 0.5,
+        "policyReasons": [
+            "style-quick"
+        ]
+    },
+    "androidOnly": true
+}

@@ -1,0 +1,28 @@
+{
+    "name": "Length Long: eight bars become twelve, inside the last 30 s",
+    "settings": {
+        "beatAware": true,
+        "phraseAligned": true,
+        "albumGapless": true,
+        "blendLength": "long"
+    },
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000
+    },
+    "expected": {
+        "reason": "before-phrase-8-bar",
+        "transitionStyle": "DJ_BLEND",
+        "transitionStartSeconds": 172.5,
+        "fadeSeconds": 24.0,
+        "incomingCueSeconds": 0.5,
+        "policyReasons": [
+            "length-long"
+        ]
+    },
+    "androidOnly": true
+}

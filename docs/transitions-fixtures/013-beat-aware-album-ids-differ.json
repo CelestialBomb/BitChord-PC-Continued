@@ -1,0 +1,30 @@
+{
+    "name": "Beat-aware: two releases with the same title are different albums when their IDs differ",
+    "settings": {
+        "beatAware": true,
+        "phraseAligned": true,
+        "albumGapless": true
+    },
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000,
+        "artist": "Made-up Artist",
+        "album": "Greatest Hits",
+        "albumId": "release-1"
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000,
+        "artist": "Made-up Artist",
+        "album": "Greatest Hits",
+        "albumId": "release-2"
+    },
+    "expected": {
+        "reason": "before-phrase-8-bar",
+        "transitionStyle": "DJ_BLEND",
+        "transitionStartSeconds": 180.5,
+        "fadeSeconds": 16.0,
+        "incomingCueSeconds": 0.5
+    },
+    "androidOnly": true
+}

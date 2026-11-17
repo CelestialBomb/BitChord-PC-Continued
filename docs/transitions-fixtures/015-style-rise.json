@@ -1,0 +1,28 @@
+{
+    "name": "Style Rise: the matched blend becomes a filter sweep",
+    "settings": {
+        "beatAware": true,
+        "phraseAligned": true,
+        "albumGapless": true,
+        "mixStyle": "rise"
+    },
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000
+    },
+    "expected": {
+        "reason": "before-phrase-8-bar",
+        "transitionStyle": "DJ_FILTER",
+        "transitionStartSeconds": 180.5,
+        "fadeSeconds": 16.0,
+        "incomingCueSeconds": 0.5,
+        "policyReasons": [
+            "style-rise"
+        ]
+    },
+    "androidOnly": true
+}

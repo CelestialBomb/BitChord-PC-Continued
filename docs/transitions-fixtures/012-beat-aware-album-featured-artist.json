@@ -1,0 +1,33 @@
+{
+    "name": "Beat-aware: an album played in order stays gapless when the next track has a featured artist",
+    "settings": {
+        "beatAware": true,
+        "phraseAligned": true,
+        "albumGapless": true
+    },
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000,
+        "artist": "Made-up Artist",
+        "album": "Made-up Album",
+        "analysis": {
+            "bpm": 140.0
+        }
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000,
+        "artist": "Made-up Artist, Guest",
+        "album": "Made-up Album",
+        "analysis": {
+            "bpm": 140.0
+        }
+    },
+    "expected": {
+        "reason": "before-gapless-window",
+        "transitionStyle": "GAPLESS",
+        "transitionStartSeconds": 199.55,
+        "fadeSeconds": 0.12
+    },
+    "androidOnly": true
+}

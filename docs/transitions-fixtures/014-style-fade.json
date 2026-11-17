@@ -1,0 +1,27 @@
+{
+    "name": "Style Fade: the matched blend becomes an equal-power fade on the same timing",
+    "settings": {
+        "beatAware": true,
+        "phraseAligned": true,
+        "albumGapless": true,
+        "mixStyle": "fade"
+    },
+    "outgoing": {
+        "id": "a",
+        "durationMs": 200000
+    },
+    "incoming": {
+        "id": "b",
+        "durationMs": 200000
+    },
+    "expected": {
+        "reason": "before-phrase-8-bar",
+        "transitionStartSeconds": 180.5,
+        "fadeSeconds": 16.0,
+        "incomingCueSeconds": 0.5,
+        "policyReasons": [
+            "style-fade"
+        ]
+    },
+    "androidOnly": true
+}

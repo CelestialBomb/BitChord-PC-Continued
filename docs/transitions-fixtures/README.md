@@ -47,7 +47,7 @@ One JSON file per case, `NNN-short-name.json`:
 }
 ```
 
-Defaults are omitted from the JSON: `beatConfidence` 0.9, `keyConfidence` 0.0, `firstBeat` 0.5, `status` `"ready"`, `vocal` 0.0, and `contentEndTime` = `duration - 2`. `transitionStyle` defaults to `EQUAL_POWER`, playback rates to 1.0, arrays to empty and `blocked` to false.
+Defaults are omitted from the JSON: `beatConfidence` 0.9, `keyConfidence` 0.0, `firstBeat` 0.5, `status` `"ready"`, `vocal` 0.0, and `contentEndTime` = `duration - 2`. `transitionStyle` defaults to `EQUAL_POWER`, playback rates to 1.0, arrays to empty and `blocked` to false. Two optional settings were added in spec 0.4: `mixStyle` (`smooth`, `fade`, `rise`, `quick`; default `smooth`) and `blendLength` (`short`, `medium`, `long`; default `medium`). They are applied to the planner's answer by `applyMixStyle` (spec section 2). Fixtures that use them are marked `androidOnly` until the PC port has it.
 
 `analysis` is expanded to the same steady synthetic grid as `PhraseBarAutomixTest`: one downbeat every four beats, phrase boundaries every eighth downbeat, the fifth downbeat as the mix-in point, and unit energy samples every half second. BPM can be zero for a no-analysis case. Times may differ by up to 50 ms; the plan and tier reasons must match exactly.
 
